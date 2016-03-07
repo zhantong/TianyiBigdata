@@ -25,8 +25,8 @@
         <module name="TianyiBigdata" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="TianyiBigdata" target="1.5" />
+    <bytecodeTargetLevel target="1.7">
+      <module name="TianyiBigdata" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>

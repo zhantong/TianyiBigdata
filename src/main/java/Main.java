@@ -14,16 +14,17 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class Main {
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
-        Job job = new Job(conf, "wordcount");
-        job.setJarByClass(WordCount.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        Job job = new Job(conf, "format label");
+        job.setJarByClass(FormatLabel.class); //注意，必须添加这行，否则hadoop无法找到对应的class
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
-        job.setMapperClass(WordCount.Map.class);
-        job.setReducerClass(WordCount.Reduce.class);
+        job.setMapperClass(FormatLabel.Map.class);
+        job.setCombinerClass(FormatLabel.OneCombiner.class);
+        job.setReducerClass(FormatLabel.Reduce.class);
         job.setInputFormatClass(TextInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
-        job.waitForCompletion(true);
+        System.exit(job.waitForCompletion(true)?0:1);
     }
 }
