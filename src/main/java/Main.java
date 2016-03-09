@@ -1,6 +1,7 @@
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
@@ -17,7 +18,7 @@ import java.net.URI;
  */
 public class Main {
     public static void main(String[] args) throws Exception {
-
+        String pathInput=args[0];
         //String tmpPath=args[2];
         String pathFormatLabel="/tmp/outformatlabel";
         Configuration jobFormatLabelConf = new Configuration();
@@ -31,7 +32,7 @@ public class Main {
         jobFormatLabel.setInputFormatClass(TextInputFormat.class);
         jobFormatLabel.setOutputFormatClass(TextOutputFormat.class);
         jobFormatLabel.setNumReduceTasks(1);
-        FileInputFormat.addInputPath(jobFormatLabel, new Path(args[0]));
+        FileInputFormat.addInputPath(jobFormatLabel, new Path(pathInput));
         FileOutputFormat.setOutputPath(jobFormatLabel, new Path(pathFormatLabel));
         ControlledJob cJobFormatLabel=new ControlledJob(jobFormatLabelConf);
         cJobFormatLabel.setJob(jobFormatLabel);
@@ -48,11 +49,12 @@ public class Main {
         jobFormatUser.setInputFormatClass(TextInputFormat.class);
         jobFormatUser.setOutputFormatClass(TextOutputFormat.class);
         jobFormatUser.setNumReduceTasks(1);
-        FileInputFormat.addInputPath(jobFormatUser, new Path(args[0]));
+        FileInputFormat.addInputPath(jobFormatUser, new Path(pathInput));
         FileOutputFormat.setOutputPath(jobFormatUser, new Path(pathFormatUser));
         ControlledJob cJobFormatUser=new ControlledJob(jobFormatUserConf);
         cJobFormatUser.setJob(jobFormatUser);
 
+        String pathSumUsers="outsumusers";
         Configuration jobSumUsersConf = new Configuration();
         Job jobSumUsers = new Job(jobSumUsersConf, "sum users");
         jobSumUsers.addCacheFile(URI.create(pathFormatUser+"/part-r-00000"));
@@ -69,13 +71,14 @@ public class Main {
         jobSumUsers.setMapOutputKeyClass(Text.class);
         jobSumUsers.setMapOutputValueClass(IntWritable.class);
         jobSumUsers.setNumReduceTasks(2);
-        FileInputFormat.addInputPath(jobSumUsers, new Path(args[0]));
-        FileOutputFormat.setOutputPath(jobSumUsers, new Path(args[1]));
+        FileInputFormat.addInputPath(jobSumUsers, new Path(pathInput));
+        FileOutputFormat.setOutputPath(jobSumUsers, new Path(pathSumUsers));
         ControlledJob cJobSumUsers=new ControlledJob(jobSumUsersConf);
         cJobSumUsers.setJob(jobSumUsers);
         cJobSumUsers.addDependingJob(cJobFormatUser);
         cJobSumUsers.addDependingJob(cJobFormatLabel);
 
+        String pathInvertedIndex="outinvertedindex";
         Configuration jobInvertedIndexConf = new Configuration();
         Job jobInvertedIndex = new Job(jobInvertedIndexConf, "inverted index");
         jobInvertedIndex.setJarByClass(InvertedIndex.class); //注意，必须添加这行，否则hadoop无法找到对应的class
@@ -89,16 +92,34 @@ public class Main {
         jobInvertedIndex.setMapOutputKeyClass(Text.class);
         jobInvertedIndex.setMapOutputValueClass(Text.class);
         jobInvertedIndex.setNumReduceTasks(2);
-        FileInputFormat.addInputPath(jobInvertedIndex, new Path("output"));
-        FileOutputFormat.setOutputPath(jobInvertedIndex, new Path("outputc"));
+        FileInputFormat.addInputPath(jobInvertedIndex, new Path(pathSumUsers));
+        FileOutputFormat.setOutputPath(jobInvertedIndex, new Path(pathInvertedIndex));
         ControlledJob cJobInvertedIndex=new ControlledJob(jobInvertedIndexConf);
         cJobInvertedIndex.setJob(jobInvertedIndex);
         cJobInvertedIndex.addDependingJob(cJobSumUsers);
+
+        String pathGroupSumUsers="outgroupsumusers";
+        Configuration jobGroupToOneConf=new Configuration();
+        Job jobGroupToOne=new Job(jobGroupToOneConf,"group to one");
+        jobGroupToOne.setJarByClass(GroupToOne.class);
+        jobGroupToOne.setOutputKeyClass(Text.class);
+        jobGroupToOne.setOutputValueClass(NullWritable.class);
+        jobGroupToOne.setMapperClass(GroupToOne.Map.class);
+        jobGroupToOne.setReducerClass(GroupToOne.Reduce.class);
+        jobGroupToOne.setInputFormatClass(TextInputFormat.class);
+        jobGroupToOne.setOutputFormatClass(TextOutputFormat.class);
+        jobGroupToOne.setNumReduceTasks(1);
+        FileInputFormat.addInputPath(jobGroupToOne, new Path(pathSumUsers));
+        FileOutputFormat.setOutputPath(jobGroupToOne, new Path(pathGroupSumUsers));
+        ControlledJob cJobGroupToOne=new ControlledJob(jobGroupToOneConf);
+        cJobGroupToOne.setJob(jobGroupToOne);
+        cJobGroupToOne.addDependingJob(cJobSumUsers);
 
         JobControl jc=new JobControl("My job control");
         jc.addJob(cJobFormatLabel);
         jc.addJob(cJobFormatUser);
         jc.addJob(cJobSumUsers);
+        jc.addJob(cJobGroupToOne);
         jc.addJob(cJobInvertedIndex);
 
 
