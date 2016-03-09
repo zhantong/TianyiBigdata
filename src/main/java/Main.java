@@ -18,6 +18,7 @@ import java.net.URI;
  */
 public class Main {
     public static void main(String[] args) throws Exception {
+
         String tmpPath=args[2];
         Configuration jobAConf = new Configuration();
         Job jobA = new Job(jobAConf,"format label");
@@ -56,9 +57,29 @@ public class Main {
         cjobB.setJob(jobB);
         cjobB.addDependingJob(cjobA);
 
+        Configuration jobCconf = new Configuration();
+        Job jobC = new Job(jobCconf, "inverted index");
+        jobC.setJarByClass(InvertedIndex.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        jobC.setOutputKeyClass(Text.class);
+        jobC.setOutputValueClass(Text.class);
+        jobC.setMapperClass(InvertedIndex.Map.class);
+        jobC.setCombinerClass(InvertedIndex.SumCombiner.class);
+        jobC.setReducerClass(InvertedIndex.Reduce.class);
+        jobC.setInputFormatClass(TextInputFormat.class);
+        jobC.setOutputFormatClass(TextOutputFormat.class);
+        jobC.setMapOutputKeyClass(Text.class);
+        jobC.setMapOutputValueClass(Text.class);
+        jobC.setNumReduceTasks(2);
+        FileInputFormat.addInputPath(jobC, new Path("output"));
+        FileOutputFormat.setOutputPath(jobC, new Path("outputc"));
+        ControlledJob cjobC=new ControlledJob(jobCconf);
+        cjobC.setJob(jobC);
+        cjobB.addDependingJob(cjobA);
+
         JobControl jc=new JobControl("My job control");
-        jc.addJob(cjobA);
-        jc.addJob(cjobB);
+        //jc.addJob(cjobA);
+        //jc.addJob(cjobB);
+        jc.addJob(cjobC);
 
         Thread th = new Thread(jc);
         th.start();
