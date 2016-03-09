@@ -93,7 +93,8 @@ public class SumUsers {
         private StringBuilder out=new StringBuilder();
         private String term;
         private String item;
-        private int threshold=10;
+        private int thresholdDown=10;
+        private int thresholdUp=20000;
         public void reduce(Text key,Iterable<IntWritable> values,Context context) throws IOException,InterruptedException{
             String[] split=key.toString().split("#");
             term=split[0];
@@ -112,7 +113,10 @@ public class SumUsers {
             for (IntWritable val:values){
                 sum+=val.get();
             }
-            if(sum>threshold) {
+            if(sum>thresholdDown) {
+                if(sum>thresholdUp){
+                    sum=thresholdUp;
+                }
                 out.append(item + ":" + sum + ";");
             }
         }
