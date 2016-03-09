@@ -18,67 +18,89 @@ import java.net.URI;
 public class Main {
     public static void main(String[] args) throws Exception {
 
-        String tmpPath=args[2];
-        Configuration jobAConf = new Configuration();
-        Job jobA = new Job(jobAConf,"format label");
-        jobA.setJarByClass(FormatLabel.class); //注意，必须添加这行，否则hadoop无法找到对应的class
-        jobA.setOutputKeyClass(Text.class);
-        jobA.setOutputValueClass(IntWritable.class);
-        jobA.setMapperClass(FormatLabel.Map.class);
-        jobA.setCombinerClass(FormatLabel.OneCombiner.class);
-        jobA.setReducerClass(FormatLabel.Reduce.class);
-        jobA.setInputFormatClass(TextInputFormat.class);
-        jobA.setOutputFormatClass(TextOutputFormat.class);
-        jobA.setNumReduceTasks(1);
-        FileInputFormat.addInputPath(jobA, new Path(args[0]));
-        FileOutputFormat.setOutputPath(jobA, new Path(tmpPath));
-        ControlledJob cjobA=new ControlledJob(jobAConf);
-        cjobA.setJob(jobA);
+        //String tmpPath=args[2];
+        String pathFormatLabel="/tmp/outformatlabel";
+        Configuration jobFormatLabelConf = new Configuration();
+        Job jobFormatLabel = new Job(jobFormatLabelConf,"format label");
+        jobFormatLabel.setJarByClass(FormatLabel.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        jobFormatLabel.setOutputKeyClass(Text.class);
+        jobFormatLabel.setOutputValueClass(IntWritable.class);
+        jobFormatLabel.setMapperClass(FormatLabel.Map.class);
+        jobFormatLabel.setCombinerClass(FormatLabel.OneCombiner.class);
+        jobFormatLabel.setReducerClass(FormatLabel.Reduce.class);
+        jobFormatLabel.setInputFormatClass(TextInputFormat.class);
+        jobFormatLabel.setOutputFormatClass(TextOutputFormat.class);
+        jobFormatLabel.setNumReduceTasks(1);
+        FileInputFormat.addInputPath(jobFormatLabel, new Path(args[0]));
+        FileOutputFormat.setOutputPath(jobFormatLabel, new Path(pathFormatLabel));
+        ControlledJob cJobFormatLabel=new ControlledJob(jobFormatLabelConf);
+        cJobFormatLabel.setJob(jobFormatLabel);
 
-        Configuration jobBconf = new Configuration();
-        Job jobB = new Job(jobBconf, "format label");
-        jobB.addCacheFile(URI.create(tmpPath+"/part-r-00000"));
-        jobB.setJarByClass(SumUsers.class); //注意，必须添加这行，否则hadoop无法找到对应的class
-        jobB.setOutputKeyClass(Text.class);
-        jobB.setOutputValueClass(Text.class);
-        jobB.setMapperClass(SumUsers.Map.class);
-        jobB.setCombinerClass(SumUsers.SumCombiner.class);
-        jobB.setPartitionerClass(SumUsers.NewPartitioner.class);
-        jobB.setReducerClass(SumUsers.Reduce.class);
-        jobB.setInputFormatClass(TextInputFormat.class);
-        jobB.setOutputFormatClass(TextOutputFormat.class);
-        jobB.setMapOutputKeyClass(Text.class);
-        jobB.setMapOutputValueClass(IntWritable.class);
-        jobB.setNumReduceTasks(2);
-        FileInputFormat.addInputPath(jobB, new Path(args[0]));
-        FileOutputFormat.setOutputPath(jobB, new Path(args[1]));
-        ControlledJob cjobB=new ControlledJob(jobBconf);
-        cjobB.setJob(jobB);
-        cjobB.addDependingJob(cjobA);
+        String pathFormatUser="/tmp/outformatuser";
+        Configuration jobFormatUserConf=new Configuration();
+        Job jobFormatUser=new Job(jobFormatUserConf,"format user");
+        jobFormatUser.setJarByClass(FormatUser.class);
+        jobFormatUser.setOutputKeyClass(Text.class);
+        jobFormatUser.setOutputValueClass(IntWritable.class);
+        jobFormatUser.setMapperClass(FormatUser.Map.class);
+        jobFormatUser.setCombinerClass(FormatUser.OneCombiner.class);
+        jobFormatUser.setReducerClass(FormatUser.Reduce.class);
+        jobFormatUser.setInputFormatClass(TextInputFormat.class);
+        jobFormatUser.setOutputFormatClass(TextOutputFormat.class);
+        jobFormatUser.setNumReduceTasks(1);
+        FileInputFormat.addInputPath(jobFormatUser, new Path(args[0]));
+        FileOutputFormat.setOutputPath(jobFormatUser, new Path(pathFormatUser));
+        ControlledJob cJobFormatUser=new ControlledJob(jobFormatUserConf);
+        cJobFormatUser.setJob(jobFormatUser);
 
-        Configuration jobCconf = new Configuration();
-        Job jobC = new Job(jobCconf, "inverted index");
-        jobC.setJarByClass(InvertedIndex.class); //注意，必须添加这行，否则hadoop无法找到对应的class
-        jobC.setOutputKeyClass(Text.class);
-        jobC.setOutputValueClass(Text.class);
-        jobC.setMapperClass(InvertedIndex.Map.class);
-        jobC.setCombinerClass(InvertedIndex.SumCombiner.class);
-        jobC.setReducerClass(InvertedIndex.Reduce.class);
-        jobC.setInputFormatClass(TextInputFormat.class);
-        jobC.setOutputFormatClass(TextOutputFormat.class);
-        jobC.setMapOutputKeyClass(Text.class);
-        jobC.setMapOutputValueClass(Text.class);
-        jobC.setNumReduceTasks(2);
-        FileInputFormat.addInputPath(jobC, new Path("output"));
-        FileOutputFormat.setOutputPath(jobC, new Path("outputc"));
-        ControlledJob cjobC=new ControlledJob(jobCconf);
-        cjobC.setJob(jobC);
-        cjobB.addDependingJob(cjobA);
-        cjobC.addDependingJob(cjobB);
+        Configuration jobSumUsersConf = new Configuration();
+        Job jobSumUsers = new Job(jobSumUsersConf, "sum users");
+        jobSumUsers.addCacheFile(URI.create(pathFormatUser+"/part-r-00000"));
+        jobSumUsers.addCacheFile(URI.create(pathFormatLabel+"/part-r-00000"));
+        jobSumUsers.setJarByClass(SumUsers.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        jobSumUsers.setOutputKeyClass(Text.class);
+        jobSumUsers.setOutputValueClass(Text.class);
+        jobSumUsers.setMapperClass(SumUsers.Map.class);
+        jobSumUsers.setCombinerClass(SumUsers.SumCombiner.class);
+        jobSumUsers.setPartitionerClass(SumUsers.NewPartitioner.class);
+        jobSumUsers.setReducerClass(SumUsers.Reduce.class);
+        jobSumUsers.setInputFormatClass(TextInputFormat.class);
+        jobSumUsers.setOutputFormatClass(TextOutputFormat.class);
+        jobSumUsers.setMapOutputKeyClass(Text.class);
+        jobSumUsers.setMapOutputValueClass(IntWritable.class);
+        jobSumUsers.setNumReduceTasks(2);
+        FileInputFormat.addInputPath(jobSumUsers, new Path(args[0]));
+        FileOutputFormat.setOutputPath(jobSumUsers, new Path(args[1]));
+        ControlledJob cJobSumUsers=new ControlledJob(jobSumUsersConf);
+        cJobSumUsers.setJob(jobSumUsers);
+        cJobSumUsers.addDependingJob(cJobFormatUser);
+        cJobSumUsers.addDependingJob(cJobFormatLabel);
+
+        Configuration jobInvertedIndexConf = new Configuration();
+        Job jobInvertedIndex = new Job(jobInvertedIndexConf, "inverted index");
+        jobInvertedIndex.setJarByClass(InvertedIndex.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        jobInvertedIndex.setOutputKeyClass(Text.class);
+        jobInvertedIndex.setOutputValueClass(Text.class);
+        jobInvertedIndex.setMapperClass(InvertedIndex.Map.class);
+        jobInvertedIndex.setCombinerClass(InvertedIndex.SumCombiner.class);
+        jobInvertedIndex.setReducerClass(InvertedIndex.Reduce.class);
+        jobInvertedIndex.setInputFormatClass(TextInputFormat.class);
+        jobInvertedIndex.setOutputFormatClass(TextOutputFormat.class);
+        jobInvertedIndex.setMapOutputKeyClass(Text.class);
+        jobInvertedIndex.setMapOutputValueClass(Text.class);
+        jobInvertedIndex.setNumReduceTasks(2);
+        FileInputFormat.addInputPath(jobInvertedIndex, new Path("output"));
+        FileOutputFormat.setOutputPath(jobInvertedIndex, new Path("outputc"));
+        ControlledJob cJobInvertedIndex=new ControlledJob(jobInvertedIndexConf);
+        cJobInvertedIndex.setJob(jobInvertedIndex);
+        cJobInvertedIndex.addDependingJob(cJobSumUsers);
+
         JobControl jc=new JobControl("My job control");
-        jc.addJob(cjobA);
-        jc.addJob(cjobB);
-        jc.addJob(cjobC);
+        jc.addJob(cJobFormatLabel);
+        jc.addJob(cJobFormatUser);
+        jc.addJob(cJobSumUsers);
+        jc.addJob(cJobInvertedIndex);
+
 
         Thread th = new Thread(jc);
         th.start();

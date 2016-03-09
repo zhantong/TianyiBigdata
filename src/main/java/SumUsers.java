@@ -10,6 +10,7 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.partition.HashPartitioner;
 
 import java.io.*;
+import java.net.URI;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
 
@@ -18,29 +19,40 @@ import java.util.StringTokenizer;
  */
 public class SumUsers {
     public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
-        private final IntWritable one = new IntWritable(1);
-        private Text content = new Text();
+        private Hashtable<String,String> formatUser=new Hashtable<>();
         private Hashtable<String,String> formatLabel=new Hashtable<>();
         public void setup(Mapper.Context context){
-            Path[] cacheFiles;
+            URI[] cacheFiles;
 
             try {
                 FileSystem fs = FileSystem.get(context.getConfiguration());
                 String line;
                 String[] tokens;
-                cacheFiles = context.getLocalCacheFiles();
+                cacheFiles = context.getCacheFiles();
                 //System.out.println("file path:"+cacheFiles[0].toString());
-                Path path=new Path(cacheFiles[0].toString());
-                FSDataInputStream fsin = fs.open(path);
-                DataInputStream in = new DataInputStream(fsin);
-                BufferedReader reader=new BufferedReader(new InputStreamReader(in));
-                while ((line = reader.readLine()) != null) {
+                Path pathUser=new Path(cacheFiles[0]);
+                FSDataInputStream fsinUser = fs.open(pathUser);
+                DataInputStream inUser = new DataInputStream(fsinUser);
+                BufferedReader readerUser=new BufferedReader(new InputStreamReader(inUser));
+                while ((line = readerUser.readLine()) != null) {
+                    tokens = line.split("\t", 2);
+                    formatUser.put(tokens[0], tokens[1]);
+                }
+                readerUser.close();
+                inUser.close();
+                fsinUser.close();
+
+                Path pathLabel=new Path(cacheFiles[1]);
+                FSDataInputStream fsinLabel = fs.open(pathLabel);
+                DataInputStream inLabel = new DataInputStream(fsinLabel);
+                BufferedReader readerLabel=new BufferedReader(new InputStreamReader(inLabel));
+                while ((line = readerLabel.readLine()) != null) {
                     tokens = line.split("\t", 2);
                     formatLabel.put(tokens[0], tokens[1]);
                 }
-                reader.close();
-                in.close();
-                fsin.close();
+                readerLabel.close();
+                inLabel.close();
+                fsinLabel.close();
             }catch (IOException e){
                 e.printStackTrace();
             }
@@ -57,16 +69,11 @@ public class SumUsers {
             StringTokenizer tokenizer = new StringTokenizer(keyWords,",");
             while (tokenizer.hasMoreTokens()) {
                 String item=tokenizer.nextToken();
-                context.write(new Text(userID+"#"+formatLabel.get(item)), new IntWritable(count));
+                context.write(new Text(formatUser.get(userID)+"#"+formatLabel.get(item)), new IntWritable(count));
             }
         }
     }
     public static class SumCombiner extends Reducer<Text, IntWritable, Text, IntWritable> {
-        private final IntWritable one = new IntWritable(1);
-        private String last=" ";
-        private StringBuilder out=new StringBuilder();
-        private String term;
-        private String item;
         public void reduce(Text key,Iterable<IntWritable> values,Context context) throws IOException,InterruptedException{
             int sum=0;
             for(IntWritable val:values){
@@ -82,7 +89,6 @@ public class SumUsers {
         }
     }
     public static class Reduce extends Reducer<Text, IntWritable, Text, Text> {
-        private final IntWritable one = new IntWritable(1);
         private String last=" ";
         private StringBuilder out=new StringBuilder();
         private String term;
