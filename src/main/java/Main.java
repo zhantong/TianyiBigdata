@@ -98,7 +98,7 @@ public class Main {
         cJobInvertedIndex.setJob(jobInvertedIndex);
         cJobInvertedIndex.addDependingJob(cJobSumUsers);
 
-        String pathGroupSumUsers="outgroupsumusers";
+        String pathGroupSumUsers="/tmp/outgroupsumusers";
         Configuration jobGroupToOneConf=new Configuration();
         Job jobGroupToOne=new Job(jobGroupToOneConf,"group to one");
         jobGroupToOne.setJarByClass(GroupToOne.class);
@@ -115,6 +115,8 @@ public class Main {
         cJobGroupToOne.setJob(jobGroupToOne);
         cJobGroupToOne.addDependingJob(cJobSumUsers);
 
+
+
         JobControl jc=new JobControl("My job control");
         jc.addJob(cJobFormatLabel);
         jc.addJob(cJobFormatUser);
@@ -128,6 +130,41 @@ public class Main {
         while(true) {
             if (jc.allFinished()) {
                 jc.stop();
+                break;
+            }
+        }
+
+
+        String pathNeighbors="outneighbors";
+        String pathToFind="/tmp/tofind.txt";
+        Configuration jobNeighborsConf=new Configuration();
+        Job jobNeighbors=new Job(jobNeighborsConf,"find closest neighbors");
+        jobNeighbors.addCacheFile(URI.create(pathToFind));
+        jobNeighbors.addCacheFile(URI.create(pathGroupSumUsers+"/part-r-00000"));
+        jobNeighbors.setJarByClass(Neighbors.class);
+        jobNeighbors.setOutputKeyClass(IntWritable.class);
+        jobNeighbors.setOutputValueClass(Text.class);
+        jobNeighbors.setMapperClass(Neighbors.Map.class);
+        jobNeighbors.setReducerClass(Neighbors.Reduce.class);
+        jobNeighbors.setMapOutputKeyClass(IntWritable.class);
+        jobNeighbors.setMapOutputValueClass(IntWritable.class);
+        jobNeighbors.setInputFormatClass(TextInputFormat.class);
+        jobNeighbors.setOutputFormatClass(TextOutputFormat.class);
+        jobNeighbors.setNumReduceTasks(2);
+        FileInputFormat.addInputPath(jobNeighbors, new Path(pathInvertedIndex));
+        FileOutputFormat.setOutputPath(jobNeighbors, new Path(pathNeighbors));
+        ControlledJob cJobNeighbors=new ControlledJob(jobNeighborsConf);
+        cJobNeighbors.setJob(jobNeighbors);
+
+        JobControl jc2=new JobControl("My job2 control");
+        jc2.addJob(cJobNeighbors);
+
+
+        Thread th2 = new Thread(jc2);
+        th2.start();
+        while(true) {
+            if (jc2.allFinished()) {
+                jc2.stop();
                 break;
             }
         }
