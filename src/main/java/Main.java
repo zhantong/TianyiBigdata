@@ -1,4 +1,3 @@
-import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
@@ -39,13 +38,13 @@ public class Main {
         Configuration jobBconf = new Configuration();
         Job jobB = new Job(jobBconf, "format label");
         jobB.addCacheFile(URI.create(tmpPath+"/part-r-00000"));
-        jobB.setJarByClass(FormatUsers.class); //注意，必须添加这行，否则hadoop无法找到对应的class
+        jobB.setJarByClass(SumUsers.class); //注意，必须添加这行，否则hadoop无法找到对应的class
         jobB.setOutputKeyClass(Text.class);
         jobB.setOutputValueClass(Text.class);
-        jobB.setMapperClass(FormatUsers.Map.class);
-        jobB.setCombinerClass(FormatUsers.SumCombiner.class);
-        jobB.setPartitionerClass(FormatUsers.NewPartitioner.class);
-        jobB.setReducerClass(FormatUsers.Reduce.class);
+        jobB.setMapperClass(SumUsers.Map.class);
+        jobB.setCombinerClass(SumUsers.SumCombiner.class);
+        jobB.setPartitionerClass(SumUsers.NewPartitioner.class);
+        jobB.setReducerClass(SumUsers.Reduce.class);
         jobB.setInputFormatClass(TextInputFormat.class);
         jobB.setOutputFormatClass(TextOutputFormat.class);
         jobB.setMapOutputKeyClass(Text.class);
@@ -75,10 +74,10 @@ public class Main {
         ControlledJob cjobC=new ControlledJob(jobCconf);
         cjobC.setJob(jobC);
         cjobB.addDependingJob(cjobA);
-
+        cjobC.addDependingJob(cjobB);
         JobControl jc=new JobControl("My job control");
-        //jc.addJob(cjobA);
-        //jc.addJob(cjobB);
+        jc.addJob(cjobA);
+        jc.addJob(cjobB);
         jc.addJob(cjobC);
 
         Thread th = new Thread(jc);

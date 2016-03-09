@@ -16,7 +16,7 @@ import java.util.StringTokenizer;
 /**
  * Created by zhantong on 16/3/7.
  */
-public class FormatUsers {
+public class SumUsers {
     public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
         private final IntWritable one = new IntWritable(1);
         private Text content = new Text();
