@@ -93,15 +93,18 @@ public class SumUsers {
         private StringBuilder out=new StringBuilder();
         private String term;
         private String item;
+        private int threshold=10;
         public void reduce(Text key,Iterable<IntWritable> values,Context context) throws IOException,InterruptedException{
             String[] split=key.toString().split("#");
             term=split[0];
             item=split[1];
             if(!term.equals(last)){
                 if(!last.equals(" ")){
-                    out.setLength(out.length()-1);
-                    context.write(new Text(last),new Text(out.toString()));
-                    out=new StringBuilder();
+                    if(out.length()>0) {
+                        out.setLength(out.length() - 1);
+                        context.write(new Text(last), new Text(out.toString()));
+                        out = new StringBuilder();
+                    }
                 }
                 last=term;
             }
@@ -109,11 +112,15 @@ public class SumUsers {
             for (IntWritable val:values){
                 sum+=val.get();
             }
-            out.append(item+":"+sum+";");
+            if(sum>threshold) {
+                out.append(item + ":" + sum + ";");
+            }
         }
         public void cleanup(Context context) throws IOException,InterruptedException{
-            out.setLength(out.length()-1);
-            context.write(new Text(last),new Text(out.toString()));
+            if(out.length()>0) {
+                out.setLength(out.length() - 1);
+                context.write(new Text(last), new Text(out.toString()));
+            }
         }
     }
 }
